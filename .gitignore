@@ -1,0 +1,28 @@
+node_modules/
+.next/
+out/
+build/
+
+# 本機資料庫與日誌
+data/
+*.log
+
+# 環境變數
+.env
+.env.local
+.env*.local
+
+# Playwright
+playwright-report/
+test-results/
+
+# TypeScript / Next 自動產生
+*.tsbuildinfo
+next-env.d.ts
+
+# Claude Code 本機設定
+.claude/settings.local.json
+
+# 系統
+.DS_Store
+Thumbs.db

@@ -1,0 +1,104 @@
+import { SOURCES } from './sources';
+import { fetchRss } from './rss';
+import { fetchScrapeSources } from './scrape';
+import { classifyByKeywords, type ClassifyResult } from './classify';
+import { aiEnabled, aiEnrich, type AiEnrichment } from './ai';
+import { existingGuids, insertArticles, totalCount, ensureSchema, type InsertRow } from './db';
+import type { RawArticle } from './types';
+
+export interface CollectStats {
+  startedAt: string;
+  durationMs: number;
+  fetched: number; // 抓到的總則數（去重前）
+  fresh: number; // 全新（資料庫沒有的）
+  inserted: number; // 實際寫入
+  aiEnriched: number; // 經 AI 評分的則數
+  major: number; // 判定為重大的新則數
+  total: number; // 資料庫目前總數
+}
+
+interface Item {
+  a: RawArticle;
+  kw: ClassifyResult;
+  ai?: AiEnrichment;
+}
+
+/** 執行一輪完整蒐集：抓取 → 去重 → 分類 → (可選)AI → 入庫 */
+export async function collect(): Promise<CollectStats> {
+  const startedAt = new Date().toISOString();
+  const t0 = Date.now();
+
+  await ensureSchema();
+
+  // 1) RSS 來源並行抓取
+  const rssSources = SOURCES.filter((s) => s.rss);
+  const rssResults = await Promise.allSettled(rssSources.map((s) => fetchRss(s)));
+  const raw: RawArticle[] = [];
+  rssResults.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      raw.push(...r.value);
+      console.log(`  ✓ [rss] ${rssSources[i].name}: ${r.value.length} 則`);
+    } else {
+      const msg = r.reason instanceof Error ? r.reason.message : String(r.reason);
+      console.error(`  ✗ [rss] ${rssSources[i].name} 失敗: ${msg}`);
+    }
+  });
+
+  // 2) Playwright 補強（沒有 RSS 的來源）
+  raw.push(...(await fetchScrapeSources(SOURCES)));
+
+  // 3) 去重：先去掉本批內重複，再用一次查詢濾掉資料庫已存在的
+  const seen = new Set<string>();
+  const batch: RawArticle[] = [];
+  for (const a of raw) {
+    if (seen.has(a.guid)) continue;
+    seen.add(a.guid);
+    batch.push(a);
+  }
+  const existing = await existingGuids(batch.map((a) => a.guid));
+  const fresh = batch.filter((a) => !existing.has(a.guid));
+
+  // 4) 關鍵字分類（一律執行，免費）
+  const items: Item[] = fresh.map((a) => ({ a, kw: classifyByKeywords(a.title, a.summary) }));
+
+  // 5) AI 評分與摘要（可選、限量以控制成本）
+  let aiEnriched = 0;
+  if (aiEnabled() && items.length > 0) {
+    const maxPerRun = Number(process.env.AI_MAX_PER_RUN ?? 40);
+    const candidates = [...items]
+      .sort((x, y) => y.kw.importance - x.kw.importance)
+      .slice(0, maxPerRun);
+    console.log(`  • [ai] 對 ${candidates.length} 則進行 AI 評分…`);
+    const enrichments = await aiEnrich(
+      candidates.map(({ a }) => ({ title: a.title, summary: a.summary, category: a.category })),
+    );
+    candidates.forEach((c, idx) => {
+      const e = enrichments[idx];
+      if (e) {
+        c.ai = e;
+        aiEnriched++;
+      }
+    });
+  }
+
+  // 6) 批次入庫
+  const insertRows: InsertRow[] = items.map((item) => ({
+    article: item.a,
+    aiSummary: item.ai ? item.ai.aiSummary : null,
+    importance: item.ai ? item.ai.importance : item.kw.importance,
+    isMajor: item.ai ? item.ai.isMajor : item.kw.isMajor,
+    keywords: item.kw.keywords,
+  }));
+  const { inserted, major } = await insertArticles(insertRows);
+
+  return {
+    startedAt,
+    durationMs: Date.now() - t0,
+    fetched: raw.length,
+    fresh: fresh.length,
+    inserted,
+    aiEnriched,
+    major,
+    total: await totalCount(),
+  };
+}

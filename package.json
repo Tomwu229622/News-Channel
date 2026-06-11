@@ -1,0 +1,36 @@
+{
+  "name": "news-finder",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "每小時自動蒐集台灣本地、國際、財經貿易、科技產業重大新聞的網站",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "collect": "tsx src/scripts/collect-once.ts",
+    "digest": "tsx src/scripts/digest-once.ts",
+    "worker": "tsx src/worker.ts",
+    "db:init": "tsx src/scripts/init-db.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.104.1",
+    "@neondatabase/serverless": "^1.1.0",
+    "next": "^16.2.9",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^8.0.11",
+    "playwright": "^1.60.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "rss-parser": "^3.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^8.0.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}
