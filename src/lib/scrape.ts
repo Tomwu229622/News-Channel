@@ -1,13 +1,20 @@
-import { chromium, type Browser } from 'playwright';
+import type { Browser } from 'playwright';
 import type { RawArticle, SourceDef } from './types';
 
 /**
  * 用 Playwright 抓取沒有 RSS 的來源。
  * 所有 scrape 來源共用一個瀏覽器實例，抓完即關閉。
+ *
+ * 注意：playwright 以「動態 import」載入，且只在確實有 scrape 來源時才執行。
+ * 否則靜態 import 會把整包 playwright 拉進 Vercel serverless function，
+ * 在沒有瀏覽器的環境 cold start 即失敗，導致 /api/collect 回傳 HTML 錯誤頁。
+ * 目前所有來源皆為 RSS，scrape 僅在 GitHub Actions（已裝瀏覽器）才會用到。
  */
 export async function fetchScrapeSources(sources: SourceDef[]): Promise<RawArticle[]> {
   const scrapeSources = sources.filter((s) => s.scrape);
   if (scrapeSources.length === 0) return [];
+
+  const { chromium } = await import('playwright');
 
   let browser: Browser;
   try {
