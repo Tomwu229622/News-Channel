@@ -273,6 +273,13 @@ a {
   color: var(--accent);
 }
 
+.card-title-original {
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
 .card-summary {
   margin-top: 6px;
   font-size: 14px;

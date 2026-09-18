@@ -46,6 +46,8 @@ async function initSchema(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_published ON articles (published_at DESC)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_category ON articles (category)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_major ON articles (is_major)`;
+  await sql`ALTER TABLE articles ADD COLUMN IF NOT EXISTS title_zh TEXT`;
+  await sql`ALTER TABLE articles ADD COLUMN IF NOT EXISTS summary_zh TEXT`;
 }
 
 // ── 型別轉換 ──────────────────────────────────────────────────
@@ -62,6 +64,8 @@ function rowToArticle(r: Record<string, unknown>): StoredArticle {
     importance: r.importance === null ? null : Number(r.importance),
     isMajor: Number(r.is_major),
     keywords: safeParseKeywords(r.keywords as string),
+    titleZh: (r.title_zh as string | null) ?? null,
+    summaryZh: (r.summary_zh as string | null) ?? null,
     publishedAt: r.published_at as string,
     fetchedAt: r.fetched_at as string,
   };
@@ -93,6 +97,8 @@ export interface InsertRow {
   importance: number | null;
   isMajor: boolean;
   keywords: string[];
+  titleZh?: string | null;
+  summaryZh?: string | null;
 }
 
 /** 批次寫入，guid 衝突則略過。回傳實際寫入數與其中重大則數。 */
@@ -104,7 +110,7 @@ export async function insertArticles(
 
   const sql = getSql();
   const now = new Date().toISOString();
-  const COLS = 12;
+  const COLS = 14;
   const CHUNK = 100;
   let inserted = 0;
   let major = 0;
@@ -133,12 +139,14 @@ export async function insertArticles(
         JSON.stringify(r.keywords),
         r.article.publishedAt,
         now,
+        r.titleZh ?? null,
+        r.summaryZh ?? null,
       );
     }
 
     const text =
       `INSERT INTO articles ` +
-      `(guid,title,link,source,category,summary,ai_summary,importance,is_major,keywords,published_at,fetched_at) ` +
+      `(guid,title,link,source,category,summary,ai_summary,importance,is_major,keywords,published_at,fetched_at,title_zh,summary_zh) ` +
       `VALUES ${placeholders} ON CONFLICT (guid) DO NOTHING RETURNING is_major`;
 
     const res = (await sql.query(text, params)) as { is_major: number }[];
@@ -174,7 +182,10 @@ export async function queryArticles(opts: QueryOptions = {}): Promise<StoredArti
     cond.push('is_major = 1');
   }
   if (opts.keyword) {
-    cond.push(`(title ILIKE $${i} OR summary ILIKE $${i} OR keywords ILIKE $${i})`);
+    cond.push(
+      `(title ILIKE $${i} OR summary ILIKE $${i} OR keywords ILIKE $${i} ` +
+        `OR title_zh ILIKE $${i} OR summary_zh ILIKE $${i})`,
+    );
     params.push(`%${opts.keyword}%`);
     i++;
   }
@@ -189,6 +200,52 @@ export async function queryArticles(opts: QueryOptions = {}): Promise<StoredArti
 
   const rows = (await sql.query(text, params)) as Record<string, unknown>[];
   return rows.map(rowToArticle);
+}
+
+/** 取出尚未翻譯（title_zh 為空）且標題不含中文的新聞，供補翻用 */
+export async function untranslatedArticles(limit: number): Promise<StoredArticle[]> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = (await sql.query(
+    `SELECT * FROM articles
+     WHERE title_zh IS NULL AND title !~ '[一-鿿]'
+     ORDER BY published_at DESC
+     LIMIT $1`,
+    [limit],
+  )) as Record<string, unknown>[];
+  return rows.map(rowToArticle);
+}
+
+/** 批次寫入翻譯結果。回傳實際更新的筆數。 */
+export async function updateTranslations(
+  rows: { id: number; titleZh: string; summaryZh: string }[],
+): Promise<number> {
+  await ensureSchema();
+  if (rows.length === 0) return 0;
+
+  const sql = getSql();
+  const CHUNK = 50;
+  let updated = 0;
+
+  for (let start = 0; start < rows.length; start += CHUNK) {
+    const chunk = rows.slice(start, start + CHUNK);
+    const ids = chunk.map((r) => r.id);
+    const titles = chunk.map((r) => r.titleZh);
+    const summaries = chunk.map((r) => r.summaryZh);
+    const res = (await sql.query(
+      `UPDATE articles AS a
+       SET title_zh = v.title_zh, summary_zh = v.summary_zh
+       FROM (
+         SELECT * FROM unnest($1::int[], $2::text[], $3::text[]) AS t(id, title_zh, summary_zh)
+       ) AS v
+       WHERE a.id = v.id
+       RETURNING a.id`,
+      [ids, titles, summaries],
+    )) as { id: number }[];
+    updated += res.length;
+  }
+
+  return updated;
 }
 
 export async function countByCategory(): Promise<Record<string, number>> {

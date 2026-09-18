@@ -20,6 +20,39 @@ function timeAgo(iso: string): string {
   return `${Math.floor(h / 24)} 天前`;
 }
 
+/** 絕對時間，強制用 Asia/Taipei 時區（伺服器可能是 UTC，不能用本地時間）。
+ * 今年：MM/DD HH:mm；非今年：YYYY/MM/DD HH:mm。 */
+function absTime(iso: string): string {
+  const fmt = new Intl.DateTimeFormat('zh-TW', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  });
+  const partsOf = (d: Date) => {
+    const parts = fmt.formatToParts(d);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+    return {
+      year: get('year'),
+      month: get('month'),
+      day: get('day'),
+      hour: get('hour'),
+      minute: get('minute'),
+    };
+  };
+
+  const p = partsOf(new Date(iso));
+  const nowYear = partsOf(new Date()).year;
+
+  if (p.year === nowYear) {
+    return `${p.month}/${p.day} ${p.hour}:${p.minute}`;
+  }
+  return `${p.year}/${p.month}/${p.day} ${p.hour}:${p.minute}`;
+}
+
 function buildHref(base: Record<string, string | undefined>): string {
   const params = new URLSearchParams();
   for (const [k, v] of Object.entries(base)) {
@@ -107,7 +140,9 @@ export default async function Home({ searchParams }: { searchParams: SearchParam
               <div className="card-meta">
                 <span className={`cat cat-${CATEGORIES.indexOf(a.category)}`}>{a.category}</span>
                 <span className="source">{a.source}</span>
-                <span className="time">{timeAgo(a.publishedAt)}</span>
+                <span className="time">
+                  {absTime(a.publishedAt)} · {timeAgo(a.publishedAt)}
+                </span>
                 {a.importance !== null && (
                   <span className={`score ${a.isMajor ? 'high' : ''}`}>重要性 {a.importance}</span>
                 )}
@@ -115,11 +150,12 @@ export default async function Home({ searchParams }: { searchParams: SearchParam
               </div>
               <h2 className="card-title">
                 <a href={a.link} target="_blank" rel="noopener noreferrer">
-                  {a.title}
+                  {a.titleZh || a.title}
                 </a>
+                {a.titleZh && <div className="card-title-original">{a.title}</div>}
               </h2>
-              {(a.aiSummary || a.summary) && (
-                <p className="card-summary">{a.aiSummary || a.summary}</p>
+              {(a.aiSummary || a.summaryZh || a.summary) && (
+                <p className="card-summary">{a.aiSummary || a.summaryZh || a.summary}</p>
               )}
               {a.keywords.length > 0 && (
                 <div className="chips">

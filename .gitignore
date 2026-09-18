@@ -11,6 +11,7 @@ data/
 .env
 .env.local
 .env*.local
+.env.bak-*
 
 # Playwright
 playwright-report/

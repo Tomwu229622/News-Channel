@@ -9,6 +9,7 @@
     "build": "next build",
     "start": "next start",
     "collect": "tsx src/scripts/collect-once.ts",
+    "translate": "tsx src/scripts/translate-once.ts",
     "digest": "tsx src/scripts/digest-once.ts",
     "worker": "tsx src/worker.ts",
     "db:init": "tsx src/scripts/init-db.ts"

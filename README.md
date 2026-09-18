@@ -13,6 +13,7 @@ AI 重要性評分與每日摘要推播。
 - 🤖 **Playwright 補強**：沒有 RSS 的網站可用瀏覽器自動化抓取
 - 🏷️ **關鍵字分類與篩選**：依「關稅、半導體、台積電、升息…」等關鍵字標記與搜尋
 - 🧠 **AI 重要性評分與摘要**（選填）：用 Claude Haiku 判斷「重大」並生成一句話摘要
+- 🌐 **英文新聞自動翻成繁體中文**（選填，走公司 gateway）
 - 🗃️ **歷史資料庫（Neon Postgres）**：自動去重、可回查，本機與雲端共用
 - 📨 **每日摘要推播**（選填）：Teams Webhook / Email，未設定則印在 console
 - 🌐 **網頁介面**：分類、重大篩選、關鍵字搜尋、一鍵手動更新
@@ -72,6 +73,7 @@ npm run worker
 
 ```powershell
 npm run collect   # 手動抓一次
+npm run translate # 手動補翻既有未翻譯的英文新聞
 npm run digest    # 手動產生並推播每日摘要
 ```
 
@@ -84,6 +86,10 @@ npm run digest    # 手動產生並推播每日摘要
 | `DATABASE_URL` | **（必填）** Neon Postgres 連線字串，本機與雲端共用 |
 | `ANTHROPIC_API_KEY` | 填入後啟用 Claude AI 重要性評分與摘要；不填則用關鍵字判斷 |
 | `AI_MAX_PER_RUN` | 每次蒐集最多送幾則給 AI（預設 40，控制成本） |
+| `RUNWAY_API_KEY` | 填入後啟用英文新聞自動翻譯（走公司 LLM gateway）；不填則不翻譯 |
+| `RUNWAY_BASE_URL` | 公司 LLM gateway 位址（預設 `https://runway.taitra.ai`） |
+| `RUNWAY_MODEL` | 逗號分隔的模型清單，依序嘗試（預設 `claude-haiku,gpt-5-chat`） |
+| `TRANSLATE_MAX_PER_RUN` | 每次蒐集最多翻幾則（預設 80，控制成本） |
 | `TEAMS_WEBHOOK_URL` | Teams 傳入 Webhook，設定後每日摘要推播到 Teams |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `DIGEST_EMAIL_TO` / `DIGEST_EMAIL_FROM` | Email 推播設定 |
 | `COLLECT_CRON` | 蒐集排程（預設 `0 * * * *`，每小時） |
@@ -127,7 +133,6 @@ npm run digest    # 手動產生並推播每日摘要
 ---
 
 ## 專案結構
-##
 
 ```
 src/
@@ -139,14 +144,15 @@ src/
     scrape.ts      Playwright 補強抓取
     classify.ts    關鍵字分類與重大判斷  ← 想調權重改這裡
     ai.ts          Claude AI 評分與摘要
-    collector.ts   蒐集編排（抓取→去重→分類→AI→入庫）
+    translate.ts   英文新聞翻譯（走公司 LLM gateway）
+    collector.ts   蒐集編排（抓取→去重→分類→AI→翻譯→入庫）
     digest.ts      每日摘要生成與推播
     env.ts         載入 .env（給 worker/scripts 用）
-  worker.ts        node-cron 排程器
   scripts/
-    collect-once.ts  手動蒐集
-    digest-once.ts   手動摘要
-    init-db.ts       建立資料表
+    collect-once.ts   手動蒐集
+    translate-once.ts 手動補翻既有未翻譯新聞
+    digest-once.ts    手動摘要
+    init-db.ts        建立資料表
   worker.ts        本機 node-cron 排程器
   app/             Next.js 網站（App Router）
     page.tsx       新聞列表頁

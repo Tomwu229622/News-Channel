@@ -42,11 +42,12 @@ export async function buildDigest(hours = 24): Promise<Digest> {
     htmlParts.push(`<h3>${category}</h3><ul>`);
     for (const a of inCat) {
       const summary = a.aiSummary || a.summary || '';
-      lines.push(`• [${a.importance ?? '-'}] ${a.title} — ${a.source}`);
+      const title = a.titleZh ?? a.title;
+      lines.push(`• [${a.importance ?? '-'}] ${title} — ${a.source}`);
       if (summary) lines.push(`    ${summary}`);
       lines.push(`    ${a.link}`);
       htmlParts.push(
-        `<li><a href="${escapeHtml(a.link)}">${escapeHtml(a.title)}</a> ` +
+        `<li><a href="${escapeHtml(a.link)}">${escapeHtml(title)}</a> ` +
           `<small>(${escapeHtml(a.source)}・重要性 ${a.importance ?? '-'})</small>` +
           (summary ? `<br/><span>${escapeHtml(summary)}</span>` : '') +
           `</li>`,

@@ -82,6 +82,7 @@
    - `DATABASE_URL` = Neon 連線字串
 3. 想啟用 AI 評分，再加：
    - `ANTHROPIC_API_KEY` = Claude 金鑰
+   - `RUNWAY_API_KEY`（選填，翻譯用）= 公司 LLM gateway 金鑰
 4. 想讓每日摘要寄到 Teams 或 Email，再加（擇一）：
    - Teams：`TEAMS_WEBHOOK_URL`
    - Email：`SMTP_HOST`、`SMTP_PORT`、`SMTP_USER`、`SMTP_PASS`、`DIGEST_EMAIL_TO`、`DIGEST_EMAIL_FROM`

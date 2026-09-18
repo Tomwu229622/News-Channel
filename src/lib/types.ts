@@ -44,6 +44,8 @@ export interface StoredArticle {
   importance: number | null; // 0-100
   isMajor: number; // 0 / 1
   keywords: string[]; // 命中的關鍵字
+  titleZh: string | null; // 翻譯後標題（繁體中文）
+  summaryZh: string | null; // 翻譯後摘要（繁體中文）
   publishedAt: string;
   fetchedAt: string;
 }

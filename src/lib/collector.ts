@@ -3,6 +3,7 @@ import { fetchRss } from './rss';
 import { fetchScrapeSources } from './scrape';
 import { classifyByKeywords, type ClassifyResult } from './classify';
 import { aiEnabled, aiEnrich, type AiEnrichment } from './ai';
+import { translateEnabled, translateBatch, needsTranslation, TRANSLATE_MAX_PER_RUN } from './translate';
 import { existingGuids, insertArticles, totalCount, ensureSchema, type InsertRow } from './db';
 import type { RawArticle } from './types';
 
@@ -14,6 +15,7 @@ export interface CollectStats {
   inserted: number; // 實際寫入
   aiEnriched: number; // 經 AI 評分的則數
   major: number; // 判定為重大的新則數
+  translated: number; // 經翻譯的則數
   total: number; // 資料庫目前總數
 }
 
@@ -21,6 +23,7 @@ interface Item {
   a: RawArticle;
   kw: ClassifyResult;
   ai?: AiEnrichment;
+  translated?: { titleZh: string; summaryZh: string };
 }
 
 /** 執行一輪完整蒐集：抓取 → 去重 → 分類 → (可選)AI → 入庫 */
@@ -81,13 +84,41 @@ export async function collect(): Promise<CollectStats> {
     });
   }
 
-  // 6) 批次入庫
+  // 6) 翻譯（可選、限量以控制成本，優先翻譯重要性較高的英文新聞）
+  let translated = 0;
+  if (translateEnabled() && items.length > 0) {
+    const maxPerRun = TRANSLATE_MAX_PER_RUN();
+    const importanceOf = (item: Item) => (item.ai ? item.ai.importance : item.kw.importance);
+    const candidates = items
+      .filter((item) => needsTranslation(item.a.title))
+      .map((item, idx) => ({ idx, item }))
+      .sort((x, y) => importanceOf(y.item) - importanceOf(x.item))
+      .slice(0, maxPerRun);
+
+    if (candidates.length > 0) {
+      console.log(`  • [translate] 對 ${candidates.length} 則進行翻譯…`);
+      const results = await translateBatch(
+        candidates.map(({ idx, item }) => ({ id: idx, title: item.a.title, summary: item.a.summary })),
+      );
+      for (const { idx, item } of candidates) {
+        const r = results.get(idx);
+        if (r) {
+          item.translated = r;
+          translated++;
+        }
+      }
+    }
+  }
+
+  // 7) 批次入庫
   const insertRows: InsertRow[] = items.map((item) => ({
     article: item.a,
     aiSummary: item.ai ? item.ai.aiSummary : null,
     importance: item.ai ? item.ai.importance : item.kw.importance,
     isMajor: item.ai ? item.ai.isMajor : item.kw.isMajor,
     keywords: item.kw.keywords,
+    titleZh: item.translated ? item.translated.titleZh : null,
+    summaryZh: item.translated ? item.translated.summaryZh : null,
   }));
   const { inserted, major } = await insertArticles(insertRows);
 
@@ -99,6 +130,7 @@ export async function collect(): Promise<CollectStats> {
     inserted,
     aiEnriched,
     major,
+    translated,
     total: await totalCount(),
   };
 }
