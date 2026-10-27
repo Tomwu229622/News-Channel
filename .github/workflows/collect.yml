@@ -39,3 +39,4 @@ jobs:
           RUNWAY_BASE_URL: https://runway.taitra.ai
           RUNWAY_MODEL: claude-haiku,gpt-5-chat
           TRANSLATE_MAX_PER_RUN: '80'
+          RETENTION_DAYS: '30'

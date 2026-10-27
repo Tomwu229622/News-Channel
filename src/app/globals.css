@@ -13,6 +13,7 @@
   --cat-1: #a78bfa;
   --cat-2: #34d399;
   --cat-3: #fbbf24;
+  --cat-4: #fb7185;
 }
 
 * {
@@ -240,6 +241,7 @@ a {
 .cat-1 { background: var(--cat-1); }
 .cat-2 { background: var(--cat-2); }
 .cat-3 { background: var(--cat-3); }
+.cat-4 { background: var(--cat-4); }
 
 .source {
   font-weight: 500;

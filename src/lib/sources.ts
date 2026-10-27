@@ -27,11 +27,21 @@ export const SOURCES: SourceDef[] = [
   { name: 'BBC Business', category: '財經貿易', rss: 'https://feeds.bbci.co.uk/news/business/rss.xml' },
 
   // ── 科技產業 ──────────────────────────────────────────
+  // iThome 資安 要排在 iThome 主站之前：兩個 feed 文章重疊（guid 相同），先出現者決定分類
+  { name: 'iThome 資安', category: '資安', rss: 'https://www.ithome.com.tw/rss/security' },
   { name: 'iThome', category: '科技產業', rss: 'https://www.ithome.com.tw/rss' },
   { name: 'TechNews 科技新報', category: '科技產業', rss: 'https://technews.tw/feed/' },
   { name: '中央社 科技', category: '科技產業', rss: 'https://feeds.feedburner.com/rsscna/technology' },
   { name: 'TechCrunch', category: '科技產業', rss: 'https://techcrunch.com/feed/' },
   { name: 'The Verge', category: '科技產業', rss: 'https://www.theverge.com/rss/index.xml' },
+
+  // ── 資安 ──────────────────────────────────────────────
+  { name: 'TWCERT/CC', category: '資安', rss: 'https://www.twcert.org.tw/tw/rss-104-1.xml' },
+  { name: 'The Hacker News', category: '資安', rss: 'https://feeds.feedburner.com/TheHackersNews' },
+  { name: 'BleepingComputer', category: '資安', rss: 'https://www.bleepingcomputer.com/feed/' },
+  { name: 'SecurityWeek', category: '資安', rss: 'https://www.securityweek.com/feed/' },
+  { name: 'Krebs on Security', category: '資安', rss: 'https://krebsonsecurity.com/feed/' },
+  { name: 'CISA Advisories', category: '資安', rss: 'https://www.cisa.gov/cybersecurity-advisories/all.xml' },
 
   // ── Playwright 補強範例（沒有 RSS 時可比照新增） ─────────
   // {

@@ -13,6 +13,7 @@ console.log(`寫入資料庫：${s.inserted}`);
 console.log(`重大新聞  ：${s.major}`);
 console.log(`AI 評分   ：${s.aiEnriched}`);
 console.log(`翻譯則數  ：${s.translated}`);
+console.log(`清除過期  ：${s.purged}`);
 console.log(`資料庫總數：${s.total}`);
 console.log(`耗時      ：${(s.durationMs / 1000).toFixed(1)} 秒`);
 

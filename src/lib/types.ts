@@ -1,6 +1,6 @@
-export type Category = '台灣本地' | '國際' | '財經貿易' | '科技產業';
+export type Category = '台灣本地' | '國際' | '財經貿易' | '科技產業' | '資安';
 
-export const CATEGORIES: Category[] = ['台灣本地', '國際', '財經貿易', '科技產業'];
+export const CATEGORIES: Category[] = ['台灣本地', '國際', '財經貿易', '科技產業', '資安'];
 
 /** 新聞來源定義：優先用 RSS，沒有 RSS 的來源才用 Playwright 補強 */
 export interface SourceDef {

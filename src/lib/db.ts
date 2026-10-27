@@ -248,6 +248,17 @@ export async function updateTranslations(
   return updated;
 }
 
+/** 刪除發布時間早於 N 天前的新聞，回傳刪除筆數。 */
+export async function purgeOlderThan(days: number): Promise<number> {
+  await ensureSchema();
+  const sql = getSql();
+  const cutoff = new Date(Date.now() - days * 86400e3).toISOString();
+  const res = (await sql.query('DELETE FROM articles WHERE published_at < $1 RETURNING id', [
+    cutoff,
+  ])) as { id: number }[];
+  return res.length;
+}
+
 export async function countByCategory(): Promise<Record<string, number>> {
   await ensureSchema();
   const sql = getSql();

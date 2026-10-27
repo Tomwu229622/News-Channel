@@ -4,7 +4,14 @@ import { fetchScrapeSources } from './scrape';
 import { classifyByKeywords, type ClassifyResult } from './classify';
 import { aiEnabled, aiEnrich, type AiEnrichment } from './ai';
 import { translateEnabled, translateBatch, needsTranslation, TRANSLATE_MAX_PER_RUN } from './translate';
-import { existingGuids, insertArticles, totalCount, ensureSchema, type InsertRow } from './db';
+import {
+  existingGuids,
+  insertArticles,
+  purgeOlderThan,
+  totalCount,
+  ensureSchema,
+  type InsertRow,
+} from './db';
 import type { RawArticle } from './types';
 
 export interface CollectStats {
@@ -16,6 +23,7 @@ export interface CollectStats {
   aiEnriched: number; // 經 AI 評分的則數
   major: number; // 判定為重大的新則數
   translated: number; // 經翻譯的則數
+  purged: number; // 清除的過期新聞則數
   total: number; // 資料庫目前總數
 }
 
@@ -24,6 +32,12 @@ interface Item {
   kw: ClassifyResult;
   ai?: AiEnrichment;
   translated?: { titleZh: string; summaryZh: string };
+}
+
+/** 新聞保留天數（讀 RETENTION_DAYS，預設 30；非正整數時退回 30）。需在函式內讀取，因 loadEnv() 晚於 import。 */
+function retentionDays(): number {
+  const n = Number(process.env.RETENTION_DAYS);
+  return Number.isInteger(n) && n > 0 ? n : 30;
 }
 
 /** 執行一輪完整蒐集：抓取 → 去重 → 分類 → (可選)AI → 入庫 */
@@ -51,9 +65,13 @@ export async function collect(): Promise<CollectStats> {
   raw.push(...(await fetchScrapeSources(SOURCES)));
 
   // 3) 去重：先去掉本批內重複，再用一次查詢濾掉資料庫已存在的
+  //    超過保留天數的舊文不入庫（否則會每小時入庫又被清除，並浪費 AI/翻譯額度）
+  const keepDays = retentionDays();
+  const cutoffIso = new Date(Date.now() - keepDays * 86400e3).toISOString();
   const seen = new Set<string>();
   const batch: RawArticle[] = [];
   for (const a of raw) {
+    if (a.publishedAt < cutoffIso) continue;
     if (seen.has(a.guid)) continue;
     seen.add(a.guid);
     batch.push(a);
@@ -122,6 +140,14 @@ export async function collect(): Promise<CollectStats> {
   }));
   const { inserted, major } = await insertArticles(insertRows);
 
+  // 8) 清除超過保留天數的舊新聞（失敗只警告，不中斷蒐集）
+  let purged = 0;
+  try {
+    purged = await purgeOlderThan(keepDays);
+  } catch (err) {
+    console.warn(`  ! [purge] 清除過期新聞失敗: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   return {
     startedAt,
     durationMs: Date.now() - t0,
@@ -131,6 +157,7 @@ export async function collect(): Promise<CollectStats> {
     aiEnriched,
     major,
     translated,
+    purged,
     total: await totalCount(),
   };
 }

@@ -1,7 +1,7 @@
 # 📰 News Finder — 重大新聞蒐集器
 
-每小時自動蒐集 **台灣本地 / 國際 / 財經貿易 / 科技產業** 四大類重要新聞，
-以 RSS/API 為主、Playwright 補強，存入本機 SQLite，並提供網頁瀏覽、關鍵字篩選、
+每小時自動蒐集 **台灣本地 / 國際 / 財經貿易 / 科技產業 / 資安** 五大類重要新聞，
+以 RSS/API 為主、Playwright 補強，存入 Neon Postgres，並提供網頁瀏覽、關鍵字篩選、
 AI 重要性評分與每日摘要推播。
 
 ---
@@ -9,12 +9,12 @@ AI 重要性評分與每日摘要推播。
 ## 功能
 
 - ⏱️ **每小時自動蒐集**（可調整頻率）
-- 📡 **RSS/API 為主**：18 個來源（中央社、自由時報、ETtoday、BBC、Guardian、NYT、鉅亨網、經濟日報、iThome、TechNews、TechCrunch、The Verge…）
+- 📡 **RSS/API 為主**：25 個來源（中央社、自由時報、ETtoday、BBC、Guardian、NYT、鉅亨網、經濟日報、iThome、TechNews、TechCrunch、The Verge，以及資安類的 iThome 資安、TWCERT/CC、The Hacker News、BleepingComputer、SecurityWeek、Krebs on Security、CISA…）
 - 🤖 **Playwright 補強**：沒有 RSS 的網站可用瀏覽器自動化抓取
 - 🏷️ **關鍵字分類與篩選**：依「關稅、半導體、台積電、升息…」等關鍵字標記與搜尋
 - 🧠 **AI 重要性評分與摘要**（選填）：用 Claude Haiku 判斷「重大」並生成一句話摘要
 - 🌐 **英文新聞自動翻成繁體中文**（選填，走公司 gateway）
-- 🗃️ **歷史資料庫（Neon Postgres）**：自動去重、可回查，本機與雲端共用
+- 🗃️ **歷史資料庫（Neon Postgres）**：自動去重、可回查，本機與雲端共用；只保留最近 30 天，過期新聞每次蒐集時自動刪除
 - 📨 **每日摘要推播**（選填）：Teams Webhook / Email，未設定則印在 console
 - 🌐 **網頁介面**：分類、重大篩選、關鍵字搜尋、一鍵手動更新
 
@@ -92,6 +92,7 @@ npm run digest    # 手動產生並推播每日摘要
 | `TRANSLATE_MAX_PER_RUN` | 每次蒐集最多翻幾則（預設 80，控制成本） |
 | `TEAMS_WEBHOOK_URL` | Teams 傳入 Webhook，設定後每日摘要推播到 Teams |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `DIGEST_EMAIL_TO` / `DIGEST_EMAIL_FROM` | Email 推播設定 |
+| `RETENTION_DAYS` | 只保留最近 N 天的新聞，更舊的在每次蒐集時刪除（預設 30） |
 | `COLLECT_CRON` | 蒐集排程（預設 `0 * * * *`，每小時） |
 | `DIGEST_CRON` | 摘要排程（預設 `0 8 * * *`，每天 08:00） |
 
@@ -129,6 +130,10 @@ npm run digest    # 手動產生並推播每日摘要
 ### 調整「重大新聞」判斷
 
 編輯 `src/lib/classify.ts` 的 `KEYWORD_WEIGHTS`（關鍵字權重）與 `MAJOR_THRESHOLD`（重大門檻）。
+
+### 調整保留天數
+
+改 `RETENTION_DAYS`（預設 30）。
 
 ---
 

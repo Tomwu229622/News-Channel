@@ -19,6 +19,12 @@ export const KEYWORD_WEIGHTS: Record<string, number> = {
   半導體: 35, 台積電: 35, 供應鏈: 30, 晶片: 30, 出口管制: 40,
   // 科技 / 產業
   AI: 20, 人工智慧: 25, 資安: 25, 駭客: 30, 個資外洩: 35, 量子: 20, 電動車: 20,
+  // 資安（英文詞比對大小寫敏感，故常見大小寫寫法都列出）
+  漏洞: 30, 勒索軟體: 40, 勒索病毒: 40, 資料外洩: 35, 零時差: 40, 供應鏈攻擊: 40,
+  網路攻擊: 30, 惡意程式: 25, 後門: 25, 釣魚: 20, DDoS: 30, 'CVE-': 20,
+  'ransomware': 35, 'Ransomware': 35, 'zero-day': 35, 'Zero-Day': 35,
+  'data breach': 35, 'Data Breach': 35, 'exploited': 25, 'malware': 25, 'Malware': 25,
+  'phishing': 20, 'Phishing': 20, 'hacked': 30,
 };
 
 /** 高於此分數視為「重大新聞」 */
