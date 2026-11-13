@@ -17,6 +17,7 @@ AI 重要性評分與每日摘要推播。
 - 🗃️ **歷史資料庫（Neon Postgres）**：自動去重、可回查，本機與雲端共用；只保留最近 30 天，過期新聞每次蒐集時自動刪除
 - 📨 **每日摘要推播**（選填）：Teams Webhook / Email，未設定則印在 console
 - 🌐 **網頁介面**：分類、重大篩選、關鍵字搜尋、一鍵手動更新
+- 📱 **可安裝到手機主畫面（PWA）**：以獨立 App 視窗開啟，不需上架商店
 
 ---
 
@@ -76,6 +77,19 @@ npm run collect   # 手動抓一次
 npm run translate # 手動補翻既有未翻譯的英文新聞
 npm run digest    # 手動產生並推播每日摘要
 ```
+
+---
+
+### 4. 安裝到手機主畫面
+
+用手機瀏覽器開啟**正式網址**（需 HTTPS，本機 `localhost` 也可測試）：
+
+- **Android Chrome**：右上角選單 →「加到主畫面」／「安裝應用程式」
+- **iPhone Safari**：分享按鈕 →「加入主畫面」
+
+安裝後會以獨立視窗開啟。目前只做「可安裝」，沒有離線快取，離線時無法瀏覽。
+想換 App 圖示，覆蓋 `public/icon-192.png`、`public/icon-512.png`、
+`public/icon-maskable-512.png`、`src/app/apple-icon.png`、`src/app/icon.png` 即可。
 
 ---
 
@@ -161,8 +175,11 @@ src/
   worker.ts        本機 node-cron 排程器
   app/             Next.js 網站（App Router）
     page.tsx       新聞列表頁
+    manifest.ts    PWA manifest（安裝到主畫面用）
+    icon.png / apple-icon.png  分頁圖示、iOS 主畫面圖示
     api/news       JSON API
     api/collect    手動觸發蒐集
+public/            PWA 圖示（icon-192 / icon-512 / icon-maskable-512）
 .github/workflows/
   collect.yml      雲端每小時蒐集（GitHub Actions）
   digest.yml       雲端每日摘要（GitHub Actions）
